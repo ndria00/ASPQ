@@ -21,3 +21,6 @@ class MyProgram:
     def print_head_predicates(self):
         for predicate in self.head_predicates : 
             print(f"Head predicate {predicate}, ")
+
+    def __str__(self):
+        return "\n".join(self.rules)
