@@ -1,14 +1,14 @@
 import copy
 from enum import Enum
 
-class ProgramType(str, Enum):
+class ProgramQuantifier(str, Enum):
     EXISTS = "exists"
     FORALL = "forall"
     CONSTRAINTS = "constraint"
 
 class MyProgram:
     rules : list[str]
-    program_type : ProgramType
+    program_type : ProgramQuantifier
     name : str
     head_predicates : set
 

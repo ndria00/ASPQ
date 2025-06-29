@@ -14,7 +14,8 @@ class FlipConstraintRewriter(Rewriter):
         super().__init__(unsat_pred_name=unsat_pred_name)
         self.location = clingo.ast.Location(clingo.ast.Position("<generated>", 1, 1), clingo.ast.Position("<generated>", 1, 1))
         self.unsat_atom = clingo.ast.SymbolicAtom(clingo.ast.Function(self.location, self.unsat_pred_name, [], False))
-         
+        self.head_predicates.add(unsat_pred_name)
+        
     def visit_Rule(self, node):
         head  = node.head
         if head.ast_type == clingo.ast.ASTType.Literal:
