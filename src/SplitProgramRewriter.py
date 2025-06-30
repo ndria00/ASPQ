@@ -33,23 +33,28 @@ class SplitProgramRewriter(Rewriter):
         self.constraint_program = None
 
     def visit_Comment(self, value):
-        self.closed_program()
         value_str = str(value)
-        if not re.match("%@exists", value_str) is None:
+        is_exist_directive = not re.match("%@exists", value_str) is None
+        is_forall_directive = not re.match("%@forall", value_str) is None
+        is_constraint_directive = not re.match("%@constraint", value_str) is None
+        if is_exist_directive or is_forall_directive or is_constraint_directive:
+            self.closed_program()
+    
+        if is_exist_directive:
             if not self.constraint_program is None:
                 raise Exception("Constraint program must appear as last program")
             self.open_program = True
             self.cur_program_quantifier = ProgramQuantifier.EXISTS
             self.program_name = f"p_{len(self.programs)+1}"
             # print("Existential subprogram start")
-        elif not re.match("%@forall", value_str) is None:
+        elif is_forall_directive:
             if not self.constraint_program is None:
                 raise Exception("Constraint program must appear as last program")
             self.open_program = True
             self.cur_program_quantifier = ProgramQuantifier.FORALL
             self.program_name = f"p_{len(self.programs)+1}"
             # print("Universal subprogram start")
-        elif not re.match("%@constraint", value_str) is None:
+        elif is_constraint_directive:
             self.open_program = True
             self.cur_program_quantifier = ProgramQuantifier.CONSTRAINTS
             self.program_name = "c"
@@ -84,6 +89,7 @@ class SplitProgramRewriter(Rewriter):
                 self.constraint_program = program
             else:
                 raise("Unknown program type")
+            self.open_program = False
         self.rules = []
         self.head_predicates = set()
     

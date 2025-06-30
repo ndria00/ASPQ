@@ -182,9 +182,7 @@ class ASPQSolver:
                 if self.n_models != 0:
                     self.exit_sat()
                 else:
-                    self.exit_sat()
-                    print("ASPQ UNSAT")
-                    exit(10)
+                    self.exit_unsat()
 
     def solve_once(self): 
         while True:
@@ -211,7 +209,7 @@ class ASPQSolver:
                 if self.models_found == self.n_models:
                     self.exit_sat()
                 else:
-                    #print("ADDING MODEL AFTER SAT")
+                    #print("adding model as constraint after SAT")
                     self.add_model_as_constraint()
                     self.last_model_symbols = None
                     return
@@ -221,7 +219,7 @@ class ASPQSolver:
 
             counterexample_facts = ""
             for symbol in self.symbols_defined_in_p2:
-                if symbol in self.last_model_symbols and symbol.name in self.programs_handler.relaxed_programs[self.p2.program_type].head_predicates:
+                if symbol in self.last_model_symbols_set and symbol.name in self.programs_handler.relaxed_programs[self.p2.program_type].head_predicates:
                     new_symbol = clingo.Function(symbol.name + self.reduct_rewriter.suffix_n, symbol.arguments, symbol.positive)
                     counterexample_facts = counterexample_facts + str(new_symbol) + "."
                     #self .assumptions.append((new_symbol, True))
