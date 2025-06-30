@@ -10,7 +10,6 @@ from .SplitProgramRewriter import SplitProgramRewriter
 class ProgramsHandler:
     
     encoding : str
-    instance : str
     original_programs :dict
     relaxed_programs : dict
     
@@ -75,9 +74,8 @@ class ProgramsHandler:
     def neg_c(self):
         return self.flipped_constraint
 
-    def __init__(self, encoding, instance):
+    def __init__(self, encoding):
         self.encoding = encoding
-        self.instance = instance
         self.original_programs = {}
         self.relaxed_programs = {}
         self.flipped_constraint = None

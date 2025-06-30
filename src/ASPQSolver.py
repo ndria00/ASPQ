@@ -16,7 +16,6 @@ from clingo.ast import parse_string
 class ASPQSolver:
     programs_handler : ProgramsHandler
     encoding : str
-    instance : str
     ctl_relaxed_programs : clingo.Control
     ctl_counter_example : clingo.Control
     ctl_p1 : clingo.Control
@@ -35,17 +34,12 @@ class ASPQSolver:
     model_printer : ModelPrinter
     logger : MyLogger
 
-    def __init__(self, encoding_path, instance_path, n_models, debug, constraint_print) -> None:
+    def __init__(self, encoding_path, n_models, debug, constraint_print) -> None:
         self.ctl_relaxed_programs = clingo.Control()
         self.ctl_counter_example = clingo.Control()
         self.ctl_p1 = clingo.Control()
         self.encoding = "\n".join(open(encoding_path).readlines())
-        file_path = Path(instance_path)
-        if file_path.exists():
-            self.instance = "\n".join(open(instance_path).readlines())
-        else:
-            self.instance = ""
-        self.programs_handler = ProgramsHandler(self.encoding, self.instance)
+        self.programs_handler = ProgramsHandler(self.encoding)
         self.assumptions = []
         self.last_model_symbols = None
         self.last_model_symbols_set = set()
@@ -66,7 +60,6 @@ class ASPQSolver:
         if self.programs_handler.split_rewriter.program_type == ProgramType.EXISTS:
             ctl_exists = clingo.Control([f"-n {self.n_models}"])
             ctl_exists.add("\n".join(self.p1.rules))
-            ctl_exists.add("\n".join(self.instance))
             ctl_exists.ground([("base", [])])
             with ctl_exists.solve(yield_=True) as handle:
                 for m in handle:
@@ -96,13 +89,7 @@ class ASPQSolver:
             program_rules = "\n".join(program.rules)
             self.logger.print(f"Adding program to relaxed programs ctl//\n {program_rules}//")
             self.ctl_relaxed_programs.add(program_rules)
-        self.ctl_relaxed_programs.add(self.programs_handler.instance)
-
-        #register an observer in such a way that the head of each ground rule is added to
-        #the counterexample program as a choice 
-        #self.ctl_relaxed_programs.ground([("instance", [])])
-        #observer = GrounderObserver()
-        #self.ctl_relaxed_programs.register_observer(observer)
+ 
         self.ctl_relaxed_programs.ground([("base", [])])
 
         #consider only predicates appearing in the head of program P1
@@ -125,9 +112,6 @@ class ASPQSolver:
             #print(f"Added program choice to counterexample control: //{choice}//")
         
         
-
-        self.ctl_counter_example.add(self.programs_handler.instance)
-        #print(f"Added program instance to counterexample control: //{self.programs_handler.instance}//")
         self.ctl_counter_example.add("\n".join(self.p2.rules))
         #print(f"Added program forall to counterexample control: //", "\n".join(self.programs_handler.original_programs[1].rules), "//")
         
@@ -172,7 +156,6 @@ class ASPQSolver:
             raise Exception("Relaxed program is unsatisfiable")
         # print("CHAIN EXISTS")
         
-        self.ctl_p1.add(self.programs_handler.instance)
         
         self.ctl_p1.add("\n".join(self.programs_handler.original_programs[self.p1.program_type].rules))
         self.ctl_p1.ground()
