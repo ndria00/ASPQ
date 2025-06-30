@@ -9,8 +9,8 @@ class PositiveModelPrinter(ModelPrinter):
         pass
 
     def print_model(self, model, p1_symbols):
-        print("Model: \n")
+        print("Model:{", end="")
         for symbol in model:
             if symbol in p1_symbols:
                 print(symbol, ". ",end="")
-        print("")
+        print("}")

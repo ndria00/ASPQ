@@ -2,7 +2,10 @@ from pathlib import Path
 import clingo
 from src import MyProgram
 from src.ConstraintModelPrinter import ConstraintModelPrinter
+from src.DebugLogger import DebugLogger
+from src.ExecutionLogger import ExecutionLogger
 from src.ModelPrinter import ModelPrinter
+from src.MyLogger import MyLogger
 from src.PositiveModelPrinter import PositiveModelPrinter
 from src.SplitProgramRewriter import ProgramType
 from .ReductRewriter import ReductRewriter
@@ -30,6 +33,7 @@ class ASPQSolver:
     exists_forall: bool
     counterexample_found : int
     model_printer : ModelPrinter
+    logger : MyLogger
 
     def __init__(self, encoding_path, instance_path, n_models, debug, constraint_print) -> None:
         self.ctl_relaxed_programs = clingo.Control()
@@ -52,10 +56,10 @@ class ASPQSolver:
         self.n_models = n_models
         self.models_found = 0
         self.counterexample_found = 0
-        self.debug = debug
         self.model_printer = PositiveModelPrinter() if not constraint_print else ConstraintModelPrinter()
+        self.logger = DebugLogger() if debug else ExecutionLogger()
+        self.exists_forall = self.programs_handler.split_rewriter.exists_forall()
         
-
     def ground(self):
         #solve directly
         #program is of the form \exists P_1 or \exists P_1 : C
@@ -89,8 +93,9 @@ class ASPQSolver:
 
         #ground relaxed programs
         for program in self.programs_handler.relaxed_programs.values():
-            print("Adding program to relaxed programs ctl//\n", "\n".join(program.rules), "//")
-            self.ctl_relaxed_programs.add("\n".join(program.rules))
+            program_rules = "\n".join(program.rules)
+            self.logger.print(f"Adding program to relaxed programs ctl//\n {program_rules}//")
+            self.ctl_relaxed_programs.add(program_rules)
         self.ctl_relaxed_programs.add(self.programs_handler.instance)
 
         #register an observer in such a way that the head of each ground rule is added to
@@ -119,7 +124,7 @@ class ASPQSolver:
             self.ctl_counter_example.add(choice)
             #print(f"Added program choice to counterexample control: //{choice}//")
         
-        self.exists_forall = self.programs_handler.split_rewriter.exists_forall()
+        
 
         self.ctl_counter_example.add(self.programs_handler.instance)
         #print(f"Added program instance to counterexample control: //{self.programs_handler.instance}//")
@@ -231,8 +236,8 @@ class ASPQSolver:
                     #self.assumptions.append((symbol, False))
             
             self.reduct_rewriter.rewrite()
-            print("Rewritten program: ", self.reduct_rewriter.rewritten_program)
-            print("M2 facts: ", counterexample_facts)
+            # print("Rewritten program: ", self.reduct_rewriter.rewritten_program)
+            # print("M2 facts: ", counterexample_facts)
             self.ctl_p1.add(f"iteration_{self.reduct_rewriter.iteration}", [], "\n".join(self.reduct_rewriter.rewritten_program) + counterexample_facts)
 
             self.ctl_p1.ground([(f"iteration_{self.reduct_rewriter.iteration}", [])])
@@ -280,15 +285,21 @@ class ASPQSolver:
 
     def exit_sat(self):
         self.print_debug_info()
-        print("ASPQ SAT")
+        if not self.exists_forall:
+            print("ASPQ SAT")
+        else:
+            self.logger.print("ASPQ SAT")
         exit(10)
     
     def exit_unsat(self):
         self.print_debug_info()
-        print("ASPQ UNSAT")
+        if not self.exists_forall:
+            print("ASPQ UNSAT")
+        else:
+            self.logger.print("ASPQ UNSAT")
         exit(20)
 
     def print_debug_info(self):
-        if(self.debug):
-            print(f"Models found: {self.models_found}")
-            print(f"Counterexample found in the search: {self.counterexample_found}")
+        if self.exists_forall:
+            self.logger.print(f"Models found: {self.models_found}")
+        self.logger.print(f"Counterexample found in the search: {self.counterexample_found}")

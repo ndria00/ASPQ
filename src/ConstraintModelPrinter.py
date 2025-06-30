@@ -8,11 +8,11 @@ class ConstraintModelPrinter(ModelPrinter):
         pass
     
     def print_model(self, model, p1_symbols):
-        print("Model: \n")
+        print("Model:{", end="")
 
         for symbol in p1_symbols:
             if symbol in model:
                 print(":- not ", symbol, ". ",end="")
             else:
                 print(":- ", symbol, ". ",end="")
-        print("")
+        print("}")
