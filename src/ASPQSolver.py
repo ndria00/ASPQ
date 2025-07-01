@@ -268,18 +268,12 @@ class ASPQSolver:
 
     def exit_sat(self):
         self.print_debug_info()
-        if not self.exists_forall:
-            print("ASPQ SAT")
-        else:
-            self.logger.print("ASPQ SAT")
+        print("ASPQ SAT")
         exit(10)
     
     def exit_unsat(self):
         self.print_debug_info()
-        if not self.exists_forall:
-            print("ASPQ UNSAT")
-        else:
-            self.logger.print("ASPQ UNSAT")
+        print("ASPQ UNSAT")
         exit(20)
 
     def print_debug_info(self):
