@@ -12,7 +12,6 @@ from .ReductRewriter import ReductRewriter
 from .ProgramsHandler import ProgramsHandler
 from clingo.ast import parse_string
 
-
 class ASPQSolver:
     programs_handler : ProgramsHandler
     encoding : str
@@ -53,7 +52,7 @@ class ASPQSolver:
         self.model_printer = PositiveModelPrinter() if not constraint_print else ConstraintModelPrinter()
         self.logger = DebugLogger() if debug else ExecutionLogger()
         self.exists_forall = self.programs_handler.split_rewriter.exists_forall()
-        
+
     def ground(self):
         #solve directly
         #program is of the form \exists P_1 or \exists P_1 : C
@@ -204,24 +203,16 @@ class ASPQSolver:
             else:
                 self.counterexample_found += 1
                 # print("Counterexample: ", self.last_model_symbols)
-
             counterexample_facts = ""
             for symbol in self.symbols_defined_in_p2:
                 if symbol in self.last_model_symbols_set and symbol.name in self.programs_handler.relaxed_programs[self.p2.program_type].head_predicates:
                     new_symbol = clingo.Function(symbol.name + self.reduct_rewriter.suffix_n, symbol.arguments, symbol.positive)
                     counterexample_facts = counterexample_facts + str(new_symbol) + "."
-                    #self .assumptions.append((new_symbol, True))
-                    #self.assumptions.append((symbol, True))
-                # else:
-                #     pass
-                    #new_symbol = clingo.Function(symbol.name + self.reduct_rewriter.suffix_n, symbol.arguments, symbol.positive)
-                    #self.assumptions.append((new_symbol, False))
-                    #self.assumptions.append((symbol, False))
             
             self.reduct_rewriter.rewrite()
             # print("Rewritten program: ", self.reduct_rewriter.rewritten_program)
             # print("M2 facts: ", counterexample_facts)
-            self.ctl_p1.add(f"iteration_{self.reduct_rewriter.iteration}", [], "\n".join(self.reduct_rewriter.rewritten_program) + counterexample_facts)
+            self.ctl_p1.add(f"iteration_{self.reduct_rewriter.iteration}", [], self.reduct_rewriter.rewritten_program + counterexample_facts)
 
             self.ctl_p1.ground([(f"iteration_{self.reduct_rewriter.iteration}", [])])
 
