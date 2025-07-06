@@ -10,11 +10,11 @@ from src.PositiveModelPrinter import PositiveModelPrinter
 from src.SplitProgramRewriter import ProgramType
 from .ReductRewriter import ReductRewriter
 from .ProgramsHandler import ProgramsHandler
-from clingo.ast import parse_string
 
 class ASPQSolver:
     programs_handler : ProgramsHandler
     encoding : str
+    instance : str
     ctl_relaxed_programs : clingo.Control
     ctl_counter_example : clingo.Control
     ctl_p1 : clingo.Control
@@ -33,11 +33,16 @@ class ASPQSolver:
     model_printer : ModelPrinter
     logger : MyLogger
 
-    def __init__(self, encoding_path, n_models, debug, constraint_print) -> None:
+    def __init__(self, encoding_path, instance_path, n_models, debug, constraint_print) -> None:
         self.ctl_relaxed_programs = clingo.Control()
         self.ctl_counter_example = clingo.Control()
         self.ctl_p1 = clingo.Control()
         self.encoding = "\n".join(open(encoding_path).readlines())
+        if instance_path != "":
+            self.instance = "\n".join(open(instance_path).readlines())
+            
+        else:
+            self.instance = ""
         self.programs_handler = ProgramsHandler(self.encoding)
         self.assumptions = []
         self.last_model_symbols = None
@@ -59,6 +64,7 @@ class ASPQSolver:
         if self.programs_handler.split_rewriter.program_type == ProgramType.EXISTS:
             ctl_exists = clingo.Control([f"-n {self.n_models}"])
             ctl_exists.add("\n".join(self.p1.rules))
+            ctl_exists.add(self.instance)
             ctl_exists.ground([("base", [])])
             with ctl_exists.solve(yield_=True) as handle:
                 for m in handle:
@@ -75,6 +81,7 @@ class ASPQSolver:
             ctl_forall = clingo.Control([])
             ctl_forall.add("\n".join(self.p1.rules))
             ctl_forall.add("\n".join(self.programs_handler.neg_c().rules))
+            ctl_forall.add(self.instance)
             ctl_forall.ground([("base", [])])
             result =  ctl_forall.solve()
             if result.unsatisfiable:
@@ -88,7 +95,7 @@ class ASPQSolver:
             program_rules = "\n".join(program.rules)
             self.logger.print(f"Adding program to relaxed programs ctl//\n {program_rules}//")
             self.ctl_relaxed_programs.add(program_rules)
- 
+        self.ctl_relaxed_programs.add(self.instance)
         self.ctl_relaxed_programs.ground([("base", [])])
 
         #consider only predicates appearing in the head of program P1
@@ -120,6 +127,7 @@ class ASPQSolver:
         else:
             self.ctl_counter_example.add("\n".join(self.programs_handler.c().rules))
         #print(f"Added program neg C to counterexample control: //", "\n".join(self.programs_handler.flipped_constraint.rules), "//")
+        self.ctl_counter_example.add(self.instance)
         self.ctl_counter_example.ground([("base", [])])
 
         for atom in self.ctl_counter_example.symbolic_atoms:
@@ -157,6 +165,7 @@ class ASPQSolver:
         
         
         self.ctl_p1.add("\n".join(self.programs_handler.original_programs[self.p1.program_type].rules))
+        self.ctl_p1.add(self.instance)
         self.ctl_p1.ground()
         if self.exists_forall:
             self.reduct_rewriter = ReductRewriter(self.programs_handler.original_programs[self.p2.program_type], self.programs_handler.c())
@@ -210,7 +219,6 @@ class ASPQSolver:
                     counterexample_facts = counterexample_facts + str(new_symbol) + "."
             
             self.reduct_rewriter.rewrite()
-            # print("Rewritten program: ", self.reduct_rewriter.rewritten_program)
             # print("M2 facts: ", counterexample_facts)
             self.ctl_p1.add(f"iteration_{self.reduct_rewriter.iteration}", [], self.reduct_rewriter.rewritten_program + counterexample_facts)
 
