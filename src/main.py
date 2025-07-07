@@ -1,8 +1,9 @@
 from .ASPQSolver import ASPQSolver
 import argparse
+import os
 
 def main():
-
+    os.environ['PYTHONHASHSEED'] = '0'
     parser = argparse.ArgumentParser(prog = "ASPQ-native", description = "Native solver for 2-level ASPQ\n")
 
     parser.add_argument('--encoding', help="path to encoding file\n", required=True)

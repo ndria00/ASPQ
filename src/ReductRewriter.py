@@ -7,12 +7,12 @@ import time, re
 
 
 class ReductRewriter(clingo.ast.Transformer):
-    ANNOTATION_OPEN_P : str = "--"
-    ANNOTATION_CLOSE_P : str = "--"
-    ANNOTATION_OPEN_N : str = "<<"
-    ANNOTATION_CLOSE_N : str = ">>"
-    ANNOTATION_OPEN_F : str = ">>"
-    ANNOTATION_CLOSE_F : str = "<<"
+    ANNOTATION_OPEN_P : str = '-'
+    ANNOTATION_CLOSE_P : str = '-'
+    ANNOTATION_OPEN_N : str = '<'
+    ANNOTATION_CLOSE_N : str = '>'
+    ANNOTATION_OPEN_F : str = '>'
+    ANNOTATION_CLOSE_F : str = '<'
     original_program : MyProgram
     constraint_program : MyProgram
     constraint_program_rewriter : ConstraintProgramRewriter 
@@ -25,12 +25,14 @@ class ReductRewriter(clingo.ast.Transformer):
     suffix_n_literals : dict
     fail_literals : dict
     fail_atom_name : str
+    ground_transformation : bool
 
-    def __init__(self, original_program, constraint_program):
+    def __init__(self, original_program, constraint_program, ground_transformation):
         self.original_program = original_program
         self.constraint_program = constraint_program
         self.placeholder_program = ""
         self.rewritten_program = ""
+        self.ground_transformation = ground_transformation
         self.constraint_program_rewriter = ConstraintProgramRewriter(self.original_program.head_predicates, self.constraint_program)
         self.iteration = 1
         self.suffix_p = f"_p_{self.iteration}"
@@ -40,29 +42,61 @@ class ReductRewriter(clingo.ast.Transformer):
         self.suffix_n_literals = dict()
         self.fail_literals = dict()
 
-    def rewrite(self):
+    def replace_or_simplify(self, m):
+        #matches are of the form not <pred_name>
+        pred_name = m.group(0)[5:len(m.group(0))-1]
+        if pred_name in self.model_symbols_set:
+            self.erase_rule = True
+        return ""
+
+    def rewrite(self, model_symbols):
         self.rewritten_program = ""
         if self.iteration == 1:
             parse_string("\n".join(self.original_program.rules), lambda stm: (self(stm)))
-            self.placeholder_program = self.rewritten_program
             self.pattern_suffix_p = re.compile('|'.join(re.escape(k) for k in self.suffix_p_literals))
             self.pattern_suffix_n = re.compile('|'.join(re.escape(k) for k in self.suffix_n_literals))
             self.pattern_fail = re.compile('|'.join(re.escape(k) for k in self.fail_literals))
-
+            #one rule per list elem
+            if self.ground_transformation:
+                self.pattern_suffix_n_negated = re.compile('not ' + '|not '.join(re.escape(k) for k in self.suffix_n_literals))
+            #print("Placeholder program: ", self.placeholder_program)
+            self.placeholder_program = self.rewritten_program 
         self.rewritten_program = self.placeholder_program
-        self.rewritten_program = self.pattern_suffix_p.sub(lambda a : self.suffix_p_literals[a.group(0)] + self.suffix_p, self.rewritten_program)
+        if not self.ground_transformation:
+            self.rewritten_program = self.pattern_suffix_p.sub(lambda a : self.suffix_p_literals[a.group(0)] + self.suffix_p, self.rewritten_program)
+            self.rewritten_program = self.pattern_suffix_n.sub(lambda a : self.suffix_n_literals[a.group(0)] + self.suffix_n, self.rewritten_program)
+            self.rewritten_program = self.pattern_fail.sub(lambda a : self.fail_literals[a.group(0)] + str(self.iteration), self.rewritten_program)
+        else:
+            #TODO this is a prototype. Update to work with ground non-propositional programs
+            self.rewritten_program  = self.placeholder_program.split("\n")
+            self.model_symbols_set = set()
+            for symbol in model_symbols:
+                self.model_symbols_set.add(str(symbol))
+            for i in range(len(self.rewritten_program)):
+                self.rewritten_program[i] = self.pattern_suffix_p.sub(lambda a : self.suffix_p_literals[a.group(0)] + self.suffix_p, self.rewritten_program[i])
+                self.erase_rule = False
+            
+                self.rewritten_program[i] = self.pattern_suffix_n_negated.sub(self.replace_or_simplify, self.rewritten_program[i])                
+                #rule has some negative literal false in in the model
+                if self.erase_rule:
+                   self.rewritten_program[i] = ""
+                else:
+                    #no negative false literal in the body - just clear the rule from remaining chars
+                    #remove extra chars remained after sub
+                    self.rewritten_program[i] = self.rewritten_program[i].replace(" ;", "")
+                    self.rewritten_program[i] = self.rewritten_program[i].replace("; .", ".")
+                    
+                self.rewritten_program[i] = self.pattern_suffix_n.sub(lambda a : self.suffix_n_literals[a.group(0)] + self.suffix_n, self.rewritten_program[i])
+                self.rewritten_program[i] = self.pattern_fail.sub(lambda a : self.fail_literals[a.group(0)] + str(self.iteration), self.rewritten_program[i])
 
-        self.rewritten_program = self.pattern_suffix_n.sub(lambda a : self.suffix_n_literals[a.group(0)] + self.suffix_n, self.rewritten_program)
-
-        self.rewritten_program = self.pattern_fail.sub(lambda a : self.fail_literals[a.group(0)] + str(self.iteration), self.rewritten_program)
-        
+            self.rewritten_program = "\n".join(self.rewritten_program)   
         self.constraint_program_rewriter.rewrite(self.suffix_p, self.fail_atom_name, self.iteration)
-        self.rewritten_program += self.constraint_program_rewriter.rewritten_program #"\n".join(self.constraint_program_rewriter.rewritten_program)
+        self.rewritten_program += self.constraint_program_rewriter.rewritten_program
         self.iteration += 1
         self.suffix_p = f"_p_{self.iteration}"
         self.suffix_n = f"_n_{self.iteration}"
         self.fail_atom_name = f"fail_"
-
+        
     def visit_Rule(self, node):
         rewritten_body = []
         new_head = None
@@ -103,11 +137,11 @@ class ReductRewriter(clingo.ast.Transformer):
                 self.fail_literals[self.ANNOTATION_OPEN_F + self.fail_atom_name + self.ANNOTATION_CLOSE_F] = self.fail_atom_name
                 fail_head = clingo.ast.Function(node.location, self.ANNOTATION_OPEN_F + self.fail_atom_name + self.ANNOTATION_CLOSE_F, [], False)
                 fail_body = [l_1, l_2]
-                self.rewritten_program += str(clingo.ast.Rule(node.location, fail_head, fail_body))
+                self.rewritten_program = self.rewritten_program + str(clingo.ast.Rule(node.location, fail_head, fail_body)) + "\n"
                 nl_1 = clingo.ast.Literal(node.location, True, f_1)
                 nl_2 = clingo.ast.Literal(node.location, False, f_2)
                 fail_body = [nl_1, nl_2]
-                self.rewritten_program += str(clingo.ast.Rule(node.location, fail_head, fail_body))
+                self.rewritten_program = self.rewritten_program + str(clingo.ast.Rule(node.location, fail_head, fail_body)) + "\n"
             except:
                 print("Usupported head")
                 exit(1)

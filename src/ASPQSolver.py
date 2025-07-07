@@ -168,9 +168,9 @@ class ASPQSolver:
         self.ctl_p1.add(self.instance)
         self.ctl_p1.ground()
         if self.exists_forall:
-            self.reduct_rewriter = ReductRewriter(self.programs_handler.original_programs[self.p2.program_type], self.programs_handler.c())
+            self.reduct_rewriter = ReductRewriter(self.programs_handler.original_programs[self.p2.program_type], self.programs_handler.c(), self.programs_handler.split_rewriter.propositional_program)
         else:
-            self.reduct_rewriter = ReductRewriter(self.programs_handler.original_programs[self.p2.program_type], self.programs_handler.neg_c())
+            self.reduct_rewriter = ReductRewriter(self.programs_handler.original_programs[self.p2.program_type], self.programs_handler.neg_c(), self.programs_handler.split_rewriter.propositional_program)
         while self.models_found != self.n_models:
             self.solve_once()
             result = self.ctl_p1.solve(on_model=self.on_model, on_finish=self.finished_solve)
@@ -218,7 +218,7 @@ class ASPQSolver:
                     new_symbol = clingo.Function(symbol.name + self.reduct_rewriter.suffix_n, symbol.arguments, symbol.positive)
                     counterexample_facts = counterexample_facts + str(new_symbol) + "."
             
-            self.reduct_rewriter.rewrite()
+            self.reduct_rewriter.rewrite(self.last_model_symbols_set)
             # print("M2 facts: ", counterexample_facts)
             self.ctl_p1.add(f"iteration_{self.reduct_rewriter.iteration}", [], self.reduct_rewriter.rewritten_program + counterexample_facts)
 
