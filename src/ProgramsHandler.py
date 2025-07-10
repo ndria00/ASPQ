@@ -23,6 +23,9 @@ class ProgramsHandler:
         self.split_rewriter = SplitProgramRewriter()
         parse_string(self.encoding, lambda stm: (self.split_rewriter(stm)))
         self.split_rewriter.check_aspq_type()
+        for i in range(1,len(self.split_rewriter.programs)+1):
+            prg = self.split_rewriter.programs[i-1]
+            self.original_programs[prg.program_type] = prg
 
     def relax_programs(self):
         lvl = len(self.split_rewriter.programs)
@@ -80,5 +83,5 @@ class ProgramsHandler:
         self.relaxed_programs = {}
         self.flipped_constraint = None
         self.split_programs()
-        self.relax_programs()
+        #self.relax_programs()
         self.flip_constraint()

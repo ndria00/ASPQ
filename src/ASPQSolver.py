@@ -91,18 +91,20 @@ class ASPQSolver:
 
 
         #ground relaxed programs
-        for program in self.programs_handler.relaxed_programs.values():
-            program_rules = "\n".join(program.rules)
-            self.logger.print(f"Adding program to relaxed programs ctl//\n {program_rules}//")
-            self.ctl_relaxed_programs.add(program_rules)
-        self.ctl_relaxed_programs.add(self.instance)
-        self.ctl_relaxed_programs.ground([("base", [])])
-
+        # for program in self.programs_handler.relaxed_programs.values():
+        #     program_rules = "\n".join(program.rules)
+        #     self.logger.print(f"Adding program to relaxed programs ctl//\n {program_rules}//")
+        #     self.ctl_relaxed_programs.add(program_rules)
+        # self.ctl_relaxed_programs.add(self.instance)
+        # self.ctl_relaxed_programs.ground([("base", [])])
+        self.ctl_p1.add("\n".join(self.programs_handler.original_programs[self.p1.program_type].rules))
+        self.ctl_p1.add(self.instance)
+        self.ctl_p1.ground()
         #consider only predicates appearing in the head of program P1
         #for constructing assumption(fixing the model of P1) and adding the model as constraint
         choice ="{"
         disjoint = True
-        for atom in self.ctl_relaxed_programs.symbolic_atoms:
+        for atom in self.ctl_p1.symbolic_atoms:
             if atom.symbol.name in self.p1.head_predicates:
                 self.symbols_defined_in_p1.add(atom.symbol)
                 choice = choice + str(atom.symbol) + ";"
@@ -131,46 +133,48 @@ class ASPQSolver:
         self.ctl_counter_example.ground([("base", [])])
 
         for atom in self.ctl_counter_example.symbolic_atoms:
-            if atom.symbol.name in self.programs_handler.relaxed_programs[self.p2.program_type].head_predicates:
+            if atom.symbol.name in self.programs_handler.original_programs[self.p2.program_type].head_predicates:
                 self.symbols_defined_in_p2.add(atom.symbol)
 
     def solve(self):
-        result = self.ctl_relaxed_programs.solve(on_model=self.on_model, on_finish=self.finished_solve)
-        if not self.last_model_symbols is None:
-            # no way to satisfy P1
-            if any(symb.name =="unsat_p_1" for symb in self.last_model_symbols):
-                if self.exists_forall:
-                    self.exit_unsat()
-                else:
-                    self.exit_sat()
-            # whatever M1 for P2 yields a program P2 | M1 which is unsat
-            if any(symb.name =="unsat_p_2" for symb in self.last_model_symbols):
-                if not self.exists_forall:
-                    self.exit_unsat()
-                self.models_found += 1
-                # print(f"Model {self.models_found}:")
-                self.print_projected_model()
-                if self.models_found == self.n_models:
-                    self.exit_sat()
-                else:
-                    self.add_model_as_constraint()
-                    self.last_model_symbols = None
-                    return
-            # C can never be satisfied given M1 and M2
-            if any(symb.name =="unsat_c" for symb in self.last_model_symbols):
-                self.exit_unsat()
-        else:
-            raise Exception("Relaxed program is unsatisfiable")
+        # result = self.ctl_relaxed_programs.solve(on_model=self.on_model, on_finish=self.finished_solve)
+        # if not self.last_model_symbols is None:
+        #     # no way to satisfy P1
+        #     if any(symb.name =="unsat_p_1" for symb in self.last_model_symbols):
+        #         if self.exists_forall:
+        #             self.exit_unsat()
+        #         else:
+        #             self.exit_sat()
+        #     # whatever M1 for P2 yields a program P2 | M1 which is unsat
+        #     if any(symb.name =="unsat_p_2" for symb in self.last_model_symbols):
+        #         if not self.exists_forall:
+        #             self.exit_unsat()
+        #         self.models_found += 1
+        #         # print(f"Model {self.models_found}:")
+        #         self.print_projected_model()
+        #         if self.models_found == self.n_models:
+        #             self.exit_sat()
+        #         else:
+        #             self.add_model_as_constraint()
+        #             self.last_model_symbols = None
+        #             return
+        #     # C can never be satisfied given M1 and M2
+        #     if any(symb.name =="unsat_c" for symb in self.last_model_symbols):
+        #         self.exit_unsat()
+        # else:
+        #     raise Exception("Relaxed program is unsatisfiable")
         # print("CHAIN EXISTS")
         
         
-        self.ctl_p1.add("\n".join(self.programs_handler.original_programs[self.p1.program_type].rules))
-        self.ctl_p1.add(self.instance)
-        self.ctl_p1.ground()
         if self.exists_forall:
             self.reduct_rewriter = ReductRewriter(self.programs_handler.original_programs[self.p2.program_type], self.programs_handler.c(), self.programs_handler.split_rewriter.propositional_program)
         else:
             self.reduct_rewriter = ReductRewriter(self.programs_handler.original_programs[self.p2.program_type], self.programs_handler.neg_c(), self.programs_handler.split_rewriter.propositional_program)
+        result = self.ctl_p1.solve(on_model=self.on_model, on_finish=self.finished_solve)
+        if self.exists_forall and result.unsatisfiable:
+            self.exit_unsat()
+        if self.exists_forall and result.unsatisfiable:
+            self.exit_sat()
         while self.models_found != self.n_models:
             self.solve_once()
             result = self.ctl_p1.solve(on_model=self.on_model, on_finish=self.finished_solve)
@@ -214,7 +218,7 @@ class ASPQSolver:
                 # print("Counterexample: ", self.last_model_symbols)
             counterexample_facts = ""
             for symbol in self.symbols_defined_in_p2:
-                if symbol in self.last_model_symbols_set and symbol.name in self.programs_handler.relaxed_programs[self.p2.program_type].head_predicates:
+                if symbol in self.last_model_symbols_set and symbol.name in self.programs_handler.original_programs[self.p2.program_type].head_predicates:
                     new_symbol = clingo.Function(symbol.name + self.reduct_rewriter.suffix_n, symbol.arguments, symbol.positive)
                     counterexample_facts = counterexample_facts + str(new_symbol) + "."
             
