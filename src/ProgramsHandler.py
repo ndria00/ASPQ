@@ -77,11 +77,12 @@ class ProgramsHandler:
     def neg_c(self):
         return self.flipped_constraint
 
-    def __init__(self, encoding):
+    def __init__(self, encoding, relax_programs):
         self.encoding = encoding
         self.original_programs = {}
         self.relaxed_programs = {}
         self.flipped_constraint = None
         self.split_programs()
-        #self.relax_programs()
+        if relax_programs:
+            self.relax_programs()
         self.flip_constraint()
