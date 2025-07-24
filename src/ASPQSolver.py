@@ -27,6 +27,7 @@ class ASPQSolver:
     last_model_symbols_set : set
     reduct_rewriter : ReductRewriter
     n_models : int
+    enumeration : bool
     models_found : int
     exists_forall: bool
     counterexample_found : int
@@ -52,7 +53,8 @@ class ASPQSolver:
         self.symbols_defined_in_p1 = set()
         self.symbols_defined_in_p2 = set()
         self.p1 = self.programs_handler.p1()
-        self.p2 = self.programs_handler.p2()
+        self.p2 = self.programs_handler.p2()        
+        self.enumeration = True if n_models == 0 else False
         self.n_models = n_models
         self.models_found = 0
         self.counterexample_found = 0
@@ -187,7 +189,7 @@ class ASPQSolver:
         
         
         
-        while self.models_found != self.n_models:
+        while self.models_found != self.n_models or self.enumeration:
             self.solve_once()
             result = self.ctl_p1.solve(on_model=self.on_model, on_finish=self.finished_solve)
             if result.unsatisfiable:
@@ -284,6 +286,8 @@ class ASPQSolver:
         
 
     def exit_sat(self):
+        if self.exists_forall:
+            print(f"Models found: {self.models_found}")
         self.print_debug_info()
         print("ASPQ SAT")
         exit(10)
@@ -294,6 +298,4 @@ class ASPQSolver:
         exit(20)
 
     def print_debug_info(self):
-        if self.exists_forall:
-            self.logger.print(f"Models found: {self.models_found}")
         self.logger.print(f"Counterexample found in the search: {self.counterexample_found}")
