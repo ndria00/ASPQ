@@ -1,4 +1,4 @@
-from src.MyLogger import MyLogger
+from .MyLogger import MyLogger
 
 
 class ExecutionLogger(MyLogger):

@@ -1,13 +1,13 @@
 from pathlib import Path
 import clingo
-from src import MyProgram
-from src.ConstraintModelPrinter import ConstraintModelPrinter
-from src.DebugLogger import DebugLogger
-from src.ExecutionLogger import ExecutionLogger
-from src.ModelPrinter import ModelPrinter
-from src.MyLogger import MyLogger
-from src.PositiveModelPrinter import PositiveModelPrinter
-from src.SplitProgramRewriter import ProgramType
+from .MyProgram import MyProgram
+from .ConstraintModelPrinter import ConstraintModelPrinter
+from .DebugLogger import DebugLogger
+from .ExecutionLogger import ExecutionLogger
+from .ModelPrinter import ModelPrinter
+from .MyLogger import MyLogger
+from .PositiveModelPrinter import PositiveModelPrinter
+from .SplitProgramRewriter import ProgramType
 from .ReductRewriter import ReductRewriter
 from .ProgramsHandler import ProgramsHandler
 

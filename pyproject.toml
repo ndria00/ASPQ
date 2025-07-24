@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.scripts]
-casper = "src.main:entrypoint"
+casper = "src.app:entrypoint"
 
 [tool.setuptools]
 packages = ["src"]

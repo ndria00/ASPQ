@@ -1,5 +1,5 @@
 
-from src.MyLogger import MyLogger
+from .MyLogger import MyLogger
 
 
 class DebugLogger(MyLogger):
