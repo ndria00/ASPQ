@@ -40,10 +40,18 @@ class ASPQSolver:
         self.ctl_relaxed_programs = clingo.Control()
         self.ctl_counter_example = clingo.Control()
         self.ctl_p1 = clingo.Control()
-        self.encoding = "\n".join(open(encoding_path).readlines())
+        try:
+            self.encoding = "\n".join(open(encoding_path).readlines())
+        except:
+            print("Could not open problem file")
+            exit(1)
+
         if instance_path != "":
-            self.instance = "\n".join(open(instance_path).readlines())
-            
+            try:
+                self.instance = "\n".join(open(instance_path).readlines())
+            except:
+                print("Could not open instance file")
+                exit(1)        
         else:
             self.instance = ""
         self.programs_handler = ProgramsHandler(self.encoding, self.relaxed_solving)
